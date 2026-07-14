@@ -6,7 +6,7 @@
 <title>STE AL RIADH — Pilotage</title>
 <meta name="theme-color" content="#0d0d0d">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%AA%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="/static/style.css?v=1">
+<link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
 
@@ -24,7 +24,18 @@
         <span class="live-dot" id="live-dot"></span>
         <span id="live-text">connexion…</span>
       </div>
+      <button class="icon-btn bell-btn" id="bell-btn" title="Notifications">
+        🔔<span class="bell-badge" id="bell-badge" hidden></span>
+      </button>
       <button class="icon-btn" id="theme-btn" title="Thème clair / sombre">◐</button>
+      <div class="user-chip" id="user-chip" hidden>
+        <span class="user-avatar" id="user-avatar">A</span>
+        <span class="user-meta">
+          <span class="user-name" id="user-name"></span>
+          <span class="user-role" id="user-role"></span>
+        </span>
+        <button class="logout-btn" id="logout-btn" title="Se déconnecter">⎋</button>
+      </div>
     </div>
   </div>
   <nav class="section-nav" id="section-nav">
@@ -34,6 +45,32 @@
     <a href="#activite">Activité</a>
   </nav>
 </header>
+
+<!-- ═══ Notification center (bell dropdown) ═══ -->
+<div class="notif-panel" id="notif-panel" hidden>
+  <header class="notif-head">
+    <b>Notifications</b>
+    <button class="link-btn" id="mark-seen-btn">Tout marquer comme lu</button>
+  </header>
+  <ul class="feed notif-list" id="notif-panel-list"></ul>
+</div>
+
+<!-- ═══ Login ═══ -->
+<div class="login-screen" id="login-screen" hidden>
+  <form class="login-card" id="login-form" autocomplete="on">
+    <div class="brand-mark login-mark">AR</div>
+    <h1>STE AL RIADH</h1>
+    <p class="login-sub">Tableau de bord — accès réservé</p>
+    <label class="login-label" for="login-user">Utilisateur</label>
+    <input class="login-input" id="login-user" name="username"
+           autocomplete="username" required>
+    <label class="login-label" for="login-pass">Mot de passe</label>
+    <input class="login-input" id="login-pass" name="password" type="password"
+           autocomplete="current-password" required>
+    <div class="login-error" id="login-error" hidden></div>
+    <button class="login-btn" id="login-submit" type="submit">Se connecter</button>
+  </form>
+</div>
 
 <main class="page" id="page" data-loading="1">
 
@@ -149,6 +186,6 @@
 <div class="toasts" id="toasts"></div>
 <div class="tooltip" id="tooltip" hidden></div>
 
-<script src="/static/app.js?v=1"></script>
+<script src="/static/app.js?v=2"></script>
 </body>
 </html>

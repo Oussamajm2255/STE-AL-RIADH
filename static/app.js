@@ -9,11 +9,13 @@ const POLL_MS = 8000;
 const $ = (s) => document.querySelector(s);
 
 let DATA = null;
+let USER = null;
 let lastSaleId = null;
 let lastNotifId = null;
 let firstLoad = true;
 let lastOkFetch = Date.now();
 let stockFilter = { family: "Toutes", q: "" };
+let pollTimer = null;
 
 /* ── formatting ──────────────────────────────────────────────────────── */
 
@@ -61,11 +63,102 @@ function initTheme() {
   };
 }
 
+/* ── auth ────────────────────────────────────────────────────────────── */
+
+const ROLE_LABEL = { superadmin: "Super Admin", admin: "Admin" };
+
+function clearUI() {
+  // Wipe every rendered container so no data from a previous session
+  // lingers in the DOM across logout / user switch.
+  DATA = null;
+  lastSaleId = null;
+  lastNotifId = null;
+  $("#page").dataset.loading = "1";
+  ["#kpi-grid", "#chart-revenue", "#chart-payments", "#chart-top",
+   "#stock-table tbody", "#credit-table tbody", "#withdrawals-feed",
+   "#restock-feed", "#sales-feed", "#notif-feed", "#notif-panel-list",
+   "#family-chips"].forEach((sel) => {
+    const el = $(sel);
+    if (el) el.innerHTML = "";
+  });
+  $("#bell-badge").hidden = true;
+}
+
+function showLogin(msg) {
+  if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  USER = null;
+  clearUI();
+  document.body.classList.remove("role-admin");
+  $("#user-chip").hidden = true;
+  $("#notif-panel").hidden = true;
+  $("#login-screen").hidden = false;
+  const err = $("#login-error");
+  err.hidden = !msg;
+  if (msg) err.textContent = msg;
+  setTimeout(() => $("#login-user").focus(), 50);
+}
+
+function enterApp(user) {
+  USER = user;
+  clearUI();
+  $("#login-screen").hidden = true;
+  $("#user-chip").hidden = false;
+  $("#user-name").textContent = user.username;
+  $("#user-role").textContent = ROLE_LABEL[user.role] || user.role;
+  $("#user-avatar").textContent = (user.username[0] || "A").toUpperCase();
+  document.body.classList.toggle("role-admin", user.role !== "superadmin");
+  firstLoad = true;
+  tick();
+}
+
+async function boot() {
+  try {
+    const r = await fetch("/api/me", { cache: "no-store" });
+    if (r.ok) { enterApp(await r.json()); return; }
+  } catch { /* server unreachable — fall through to login */ }
+  showLogin();
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = $("#login-submit");
+  btn.disabled = true;
+  btn.textContent = "Connexion…";
+  try {
+    const r = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: $("#login-user").value,
+        password: $("#login-pass").value,
+      }),
+    });
+    if (!r.ok) {
+      const detail = (await r.json().catch(() => ({}))).detail;
+      showLogin(detail || "Connexion impossible");
+      return;
+    }
+    $("#login-error").hidden = true;
+    enterApp(await r.json());
+  } catch {
+    showLogin("Serveur injoignable — réessayez");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Se connecter";
+  }
+}
+
+async function doLogout() {
+  try { await fetch("/api/logout", { method: "POST" }); } catch {}
+  showLogin();
+}
+
 /* ── fetch loop ──────────────────────────────────────────────────────── */
 
 async function tick() {
   try {
     const r = await fetch("/api/dashboard", { cache: "no-store" });
+    if (r.status === 401) { showLogin("Session expirée — reconnectez-vous"); return; }
     if (!r.ok) throw new Error(r.status);
     const fresh = await r.json();
     detectEvents(fresh);
@@ -82,7 +175,7 @@ async function tick() {
     }
     renderLivePill();  // degrade the pill even without data
   } finally {
-    setTimeout(tick, POLL_MS);
+    pollTimer = setTimeout(tick, POLL_MS);
   }
 }
 
@@ -102,16 +195,69 @@ function detectEvents(fresh) {
   }
   if (newestSale) lastSaleId = newestSale.sale_id;
 
-  const newestNotif = fresh.notifications?.[0];
+  const newestNotif = fresh.notif_feed?.[0];
   if (!firstLoad && newestNotif && lastNotifId && newestNotif.id !== lastNotifId) {
-    for (const n of fresh.notifications) {
-      if (n.id === lastNotifId) break;
+    let shown = 0;
+    for (const n of fresh.notif_feed) {
+      if (n.id === lastNotifId || shown >= 3) break;
       toast(n.severity === "danger" ? "t-danger"
         : n.severity === "warning" ? "t-warning" : "",
         n.title, n.body);
+      shown++;
     }
   }
   if (newestNotif) lastNotifId = newestNotif.id;
+}
+
+/* ── notification center ─────────────────────────────────────────────── */
+
+function parseTs(iso) {
+  return new Date(String(iso || "").replace(" ", "T")).getTime() || 0;
+}
+
+function unseenCount() {
+  if (!DATA?.notif_feed) return 0;
+  const seen = DATA.notif_last_seen ? parseTs(DATA.notif_last_seen) : 0;
+  return DATA.notif_feed.filter((n) => parseTs(n.ts) > seen).length;
+}
+
+function renderBell() {
+  const n = unseenCount();
+  const badge = $("#bell-badge");
+  badge.hidden = n === 0;
+  badge.textContent = n > 99 ? "99+" : n;
+  if (!$("#notif-panel").hidden) renderNotifPanel();
+}
+
+function renderNotifPanel() {
+  const seen = DATA?.notif_last_seen ? parseTs(DATA.notif_last_seen) : 0;
+  $("#notif-panel-list").innerHTML = (DATA?.notif_feed || []).map((n) => `
+    <li class="sev-${esc(n.severity)} ${parseTs(n.ts) > seen ? "unseen" : ""}">
+      <div class="ico">${CAT_ICO[n.category] || "📌"}</div>
+      <div class="body">
+        <div class="t1">${esc(n.title)}${n.source === "web"
+          ? '<span class="src-tag">AUTO</span>' : ""}</div>
+        <div class="t2">${esc(n.body)}</div>
+      </div>
+      <div class="right"><div class="when">${relTime(n.ts)}</div></div>
+    </li>`).join("")
+    || `<li><div class="body"><div class="t2">Aucune notification</div></div></li>`;
+}
+
+function toggleNotifPanel(force) {
+  const p = $("#notif-panel");
+  const show = force !== undefined ? force : p.hidden;
+  p.hidden = !show;
+  if (show) renderNotifPanel();
+}
+
+async function markAllSeen() {
+  try {
+    await fetch("/api/notifications/seen", { method: "POST" });
+    if (DATA) DATA.notif_last_seen = new Date().toISOString();
+    renderBell();
+    renderNotifPanel();
+  } catch {}
 }
 
 function toast(cls, title, body) {
@@ -136,6 +282,7 @@ function renderAll() {
   renderStock();
   renderCredit();
   renderFeeds();
+  renderBell();
   const badge = $("#nav-stock-badge");
   badge.hidden = !DATA.stock_alerts;
   badge.textContent = DATA.stock_alerts;
@@ -411,7 +558,7 @@ function renderCredit() {
 /* ── feeds ───────────────────────────────────────────────────────────── */
 
 const CAT_ICO = { restock: "🚚", stock: "📦", credit: "💰", shift: "🕐",
-                  backup: "💾", system: "⚙️" };
+                  backup: "💾", system: "⚙️", sales: "💵" };
 
 function renderFeeds() {
   $("#sales-feed").innerHTML = (DATA.recent_sales || []).map((s, i) => `
@@ -428,15 +575,15 @@ function renderFeeds() {
       </div>
     </li>`).join("");
 
-  $("#notif-feed").innerHTML = (DATA.notifications || []).map((n) => `
+  $("#notif-feed").innerHTML = (DATA.notif_feed || []).slice(0, 12).map((n) => `
     <li class="sev-${esc(n.severity)}">
-      ${n.read ? "" : '<span class="unread-dot"></span>'}
       <div class="ico">${CAT_ICO[n.category] || "📌"}</div>
       <div class="body">
-        <div class="t1">${esc(n.title)}</div>
+        <div class="t1">${esc(n.title)}${n.source === "web"
+          ? '<span class="src-tag">AUTO</span>' : ""}</div>
         <div class="t2">${esc(n.body)}</div>
       </div>
-      <div class="right"><div class="when">${relTime(n.timestamp)}</div></div>
+      <div class="right"><div class="when">${relTime(n.ts)}</div></div>
     </li>`).join("");
 
   $("#withdrawals-feed").innerHTML = (DATA.withdrawals_recent || []).map((w) => `
@@ -482,5 +629,15 @@ initNav();
 $("#stock-search").addEventListener("input", (e) => {
   stockFilter.q = e.target.value; if (DATA) renderStock();
 });
+$("#login-form").addEventListener("submit", doLogin);
+$("#logout-btn").addEventListener("click", doLogout);
+$("#bell-btn").addEventListener("click", (e) => {
+  e.stopPropagation(); toggleNotifPanel();
+});
+$("#mark-seen-btn").addEventListener("click", markAllSeen);
+document.addEventListener("click", (e) => {
+  if (!$("#notif-panel").hidden
+      && !e.target.closest("#notif-panel, #bell-btn")) toggleNotifPanel(false);
+});
 setInterval(() => { if (DATA) { renderLivePill(); } }, 20000);
-tick();
+boot();
