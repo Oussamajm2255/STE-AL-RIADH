@@ -21,10 +21,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-DATABASE_URL = os.environ.get("DATABASE_URL") or (
-    "postgresql://postgres:NjrXhNHOXVEPQEaqEHlLljZqoRLLuKEL"
-    "@centerbeam.proxy.rlwy.net:28214/railway"
-)
+# No credentials in code — the DATABASE_URL environment variable is required.
+# On Railway: set DATABASE_URL = ${{Postgres.DATABASE_URL}} in the service
+# variables. Locally: set it in your shell before running uvicorn.
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is not set — refusing to start."
+    )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 app = FastAPI(title="STE AL RIADH — Monitoring", docs_url=None, redoc_url=None)

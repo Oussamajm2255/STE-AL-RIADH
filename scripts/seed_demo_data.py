@@ -5,8 +5,7 @@
 #  AbdouProSync.exe starts publishing. Running the real sync replaces
 #  everything automatically (each file loads with DELETE + INSERT).
 #
-#  Usage:  python scripts/seed_demo_data.py
-#          (reads DATABASE_URL env var, falls back to the Railway public URL)
+#  Usage:  set DATABASE_URL, then:  python scripts/seed_demo_data.py
 # ═══════════════════════════════════════════════════════════════════════════
 
 import json
@@ -18,10 +17,9 @@ from datetime import datetime, timedelta, date
 import psycopg2
 import psycopg2.extras
 
-DB = os.environ.get("DATABASE_URL") or (
-    "postgresql://postgres:NjrXhNHOXVEPQEaqEHlLljZqoRLLuKEL"
-    "@centerbeam.proxy.rlwy.net:28214/railway"
-)
+DB = os.environ.get("DATABASE_URL")
+if not DB:
+    raise SystemExit("Set the DATABASE_URL environment variable first.")
 
 random.seed(42)   # deterministic demo
 

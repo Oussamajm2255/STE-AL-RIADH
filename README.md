@@ -29,7 +29,8 @@ uvicorn server:app --reload
 # http://127.0.0.1:8000
 ```
 
-`DATABASE_URL` env var overrides the built-in connection string.
+The `DATABASE_URL` env var is **required** — there are no credentials in the
+code. The app refuses to start without it.
 
 ## Deploy on Railway (production)
 
