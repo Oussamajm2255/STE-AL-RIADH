@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>STE AL RIADH — Pilotage</title>
+<meta name="theme-color" content="#0d0d0d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%AA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css?v=1">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">AR</div>
+      <div class="brand-text">
+        <div class="brand-name" id="shop-name">STE AL RIADH</div>
+        <div class="brand-sub" id="shop-sub">Tableau de bord</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-pill" id="live-pill" title="Fraîcheur des données">
+        <span class="live-dot" id="live-dot"></span>
+        <span id="live-text">connexion…</span>
+      </div>
+      <button class="icon-btn" id="theme-btn" title="Thème clair / sombre">◐</button>
+    </div>
+  </div>
+  <nav class="section-nav" id="section-nav">
+    <a href="#apercu" class="active">Aperçu</a>
+    <a href="#stock">Stock <span class="nav-badge" id="nav-stock-badge" hidden></span></a>
+    <a href="#credits">Crédits</a>
+    <a href="#activite">Activité</a>
+  </nav>
+</header>
+
+<main class="page" id="page" data-loading="1">
+
+  <!-- ═══ APERÇU ═══ -->
+  <section id="apercu">
+    <div class="kpi-grid" id="kpi-grid"><!-- stat tiles --></div>
+
+    <div class="charts-row">
+      <article class="card chart-card">
+        <header class="card-head">
+          <div>
+            <h2>Chiffre d'affaires — 14 jours</h2>
+            <p class="card-sub" id="rev-total-sub">&nbsp;</p>
+          </div>
+          <div class="legend" id="rev-legend">
+            <span class="legend-item"><i class="swatch" style="background:var(--s1)"></i>Boutique</span>
+            <span class="legend-item"><i class="swatch" style="background:var(--s2)"></i>Dépôt</span>
+          </div>
+        </header>
+        <div class="chart-body" id="chart-revenue"></div>
+      </article>
+
+      <div class="charts-col">
+        <article class="card">
+          <header class="card-head"><h2>Encaissements — 7 jours</h2></header>
+          <div id="chart-payments"></div>
+        </article>
+        <article class="card">
+          <header class="card-head"><h2>Top produits — 7 jours</h2></header>
+          <div id="chart-top"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ STOCK ═══ -->
+  <section id="stock">
+    <article class="card">
+      <header class="card-head stock-head">
+        <div>
+          <h2>État du stock</h2>
+          <p class="card-sub" id="stock-sub">Boutique &amp; Dépôt</p>
+        </div>
+        <input type="search" id="stock-search" class="search" placeholder="Filtrer un produit…">
+      </header>
+      <div class="chips" id="family-chips"></div>
+      <div class="table-scroll">
+        <table class="data-table" id="stock-table">
+          <thead><tr>
+            <th>Produit</th><th>Famille</th>
+            <th class="num">Boutique</th><th class="num">Dépôt</th>
+            <th class="num">Total</th><th>État</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <!-- ═══ CRÉDITS ═══ -->
+  <section id="credits">
+    <div class="two-col">
+      <article class="card">
+        <header class="card-head">
+          <div>
+            <h2>Encours clients</h2>
+            <p class="card-sub" id="credit-sub">&nbsp;</p>
+          </div>
+        </header>
+        <div class="table-scroll">
+          <table class="data-table" id="credit-table">
+            <thead><tr>
+              <th>Client</th><th>Téléphone</th>
+              <th class="num">Tickets</th><th class="num">Encours</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card-head"><h2>Prélèvements récents</h2></header>
+        <ul class="feed" id="withdrawals-feed"></ul>
+        <header class="card-head" style="margin-top:14px"><h2>Derniers chargements</h2></header>
+        <ul class="feed" id="restock-feed"></ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ═══ ACTIVITÉ ═══ -->
+  <section id="activite">
+    <div class="two-col">
+      <article class="card">
+        <header class="card-head"><h2>Ventes en direct</h2></header>
+        <ul class="feed" id="sales-feed"></ul>
+      </article>
+      <article class="card">
+        <header class="card-head"><h2>Notifications du magasin</h2></header>
+        <ul class="feed" id="notif-feed"></ul>
+      </article>
+    </div>
+  </section>
+
+  <footer class="page-foot">
+    <span id="foot-sync">—</span>
+    <span>STE AL RIADH · lecture seule · alimenté par AbdouProSync</span>
+  </footer>
+</main>
+
+<div class="offline-banner" id="offline-banner" hidden>
+  ⚠ Données non rafraîchies — <span id="offline-since"></span>
+</div>
+<div class="toasts" id="toasts"></div>
+<div class="tooltip" id="tooltip" hidden></div>
+
+<script src="/static/app.js?v=1"></script>
+</body>
+</html>
