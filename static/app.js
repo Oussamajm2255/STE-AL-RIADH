@@ -230,25 +230,89 @@ function renderBell() {
 }
 
 function renderNotifPanel() {
+  const list = DATA?.notif_feed || [];
   const seen = DATA?.notif_last_seen ? parseTs(DATA.notif_last_seen) : 0;
-  $("#notif-panel-list").innerHTML = (DATA?.notif_feed || []).map((n) => `
-    <li class="sev-${esc(n.severity)} ${parseTs(n.ts) > seen ? "unseen" : ""}">
-      <div class="ico">${CAT_ICO[n.category] || "📌"}</div>
-      <div class="body">
-        <div class="t1">${esc(n.title)}${n.source === "web"
-          ? '<span class="src-tag">AUTO</span>' : ""}</div>
-        <div class="t2">${esc(n.body)}</div>
-      </div>
-      <div class="right"><div class="when">${relTime(n.ts)}</div></div>
-    </li>`).join("")
-    || `<li><div class="body"><div class="t2">Aucune notification</div></div></li>`;
+  const now = Date.now();
+  const DAY = 86400000;
+
+  function bucket(ts) {
+    const age = now - ts;
+    if (age < DAY) return "Aujourd'hui";
+    if (age < 2 * DAY) return "Hier";
+    return "Plus tôt";
+  }
+
+  const groups = {};
+  list.forEach((n) => {
+    const key = bucket(parseTs(n.ts));
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(n);
+  });
+
+  const order = ["Aujourd'hui", "Hier", "Plus tôt"];
+  let html = "";
+  order.forEach((label) => {
+    const items = groups[label];
+    if (!items?.length) return;
+    html += `<li class="notif-group-label">${label}</li>`;
+    items.forEach((n) => {
+      html += `
+        <li class="sev-${esc(n.severity)} ${parseTs(n.ts) > seen ? "unseen" : ""}">
+          <div class="ico">${CAT_ICO[n.category] || "📌"}</div>
+          <div class="body">
+            <div class="t1">${esc(n.title)}${n.source === "web"
+              ? '<span class="src-tag">AUTO</span>' : ""}</div>
+            <div class="t2">${esc(n.body)}</div>
+          </div>
+          <div class="right"><div class="when">${relTime(n.ts)}</div></div>
+        </li>`;
+    });
+  });
+
+  $("#notif-panel-list").innerHTML = html;
+
+  const empty = !list.length;
+  $("#notif-panel-list").hidden = empty;
+  $("#notif-empty").hidden = !empty;
+
+  const count = unseenCount();
+  $("#notif-count").hidden = count === 0;
+  $("#notif-count").textContent = count > 99 ? "99+" : count;
+}
+
+function openNotifPanel() {
+  const panel = $("#notif-panel");
+  const backdrop = $("#notif-backdrop");
+  panel.hidden = false;
+  backdrop.hidden = false;
+  // Force reflow before adding .show for the transition to work
+  panel.offsetHeight;
+  panel.classList.add("show");
+  backdrop.classList.add("show");
+  document.body.style.overflow = "hidden";
+  renderNotifPanel();
+}
+
+function closeNotifPanel() {
+  const panel = $("#notif-panel");
+  const backdrop = $("#notif-backdrop");
+  panel.classList.remove("show");
+  backdrop.classList.remove("show");
+  document.body.style.overflow = "";
+  // Hide after transition ends
+  setTimeout(() => {
+    if (!panel.classList.contains("show")) {
+      panel.hidden = true;
+      backdrop.hidden = true;
+    }
+  }, 320);
 }
 
 function toggleNotifPanel(force) {
-  const p = $("#notif-panel");
-  const show = force !== undefined ? force : p.hidden;
-  p.hidden = !show;
-  if (show) renderNotifPanel();
+  const panel = $("#notif-panel");
+  const open = force !== undefined ? force : panel.hidden || !panel.classList.contains("show");
+  if (open) openNotifPanel();
+  else closeNotifPanel();
 }
 
 async function markAllSeen() {
@@ -634,10 +698,11 @@ $("#logout-btn").addEventListener("click", doLogout);
 $("#bell-btn").addEventListener("click", (e) => {
   e.stopPropagation(); toggleNotifPanel();
 });
+$("#notif-close").addEventListener("click", () => toggleNotifPanel(false));
+$("#notif-backdrop").addEventListener("click", () => toggleNotifPanel(false));
 $("#mark-seen-btn").addEventListener("click", markAllSeen);
-document.addEventListener("click", (e) => {
-  if (!$("#notif-panel").hidden
-      && !e.target.closest("#notif-panel, #bell-btn")) toggleNotifPanel(false);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("#notif-panel").hidden) toggleNotifPanel(false);
 });
 setInterval(() => { if (DATA) { renderLivePill(); } }, 20000);
 boot();

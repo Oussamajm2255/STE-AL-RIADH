@@ -46,13 +46,25 @@
   </nav>
 </header>
 
-<!-- ═══ Notification center (bell dropdown) ═══ -->
+<!-- ═══ Notification center (slide-in drawer) ═══ -->
+<div class="notif-backdrop" id="notif-backdrop" hidden></div>
 <div class="notif-panel" id="notif-panel" hidden>
   <header class="notif-head">
-    <b>Notifications</b>
-    <button class="link-btn" id="mark-seen-btn">Tout marquer comme lu</button>
+    <div class="notif-head-left">
+      <h2 class="notif-title">Notifications</h2>
+      <span class="notif-count" id="notif-count" hidden>0</span>
+    </div>
+    <div class="notif-head-actions">
+      <button class="link-btn" id="mark-seen-btn">Tout lu</button>
+      <button class="notif-close" id="notif-close" title="Fermer">&times;</button>
+    </div>
   </header>
-  <ul class="feed notif-list" id="notif-panel-list"></ul>
+  <ul class="notif-list" id="notif-panel-list"></ul>
+  <div class="notif-empty" id="notif-empty" hidden>
+    <div class="notif-empty-icon">🔔</div>
+    <div class="notif-empty-text">Aucune notification</div>
+    <div class="notif-empty-sub">Les alertes et événements apparaîtront ici</div>
+  </div>
 </div>
 
 <!-- ═══ Login ═══ -->
